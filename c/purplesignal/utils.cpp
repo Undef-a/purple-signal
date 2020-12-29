@@ -20,6 +20,14 @@ std::string tjni_jstring_to_stdstring(JNIEnv *env, jstring jstr) {
     return stdstr;
 }
 
+const char * tjni_jbyte_to_stdbyte_array(JNIEnv *env, jbyteArray jbyteArray) {
+	jbyte * jbytes = env->GetByteArrayElements(jbyteArray, NULL);
+    //static_assert(sizeof(jchar) == sizeof(char16_t), "jchar is not as long as char16_t");
+    const char * byteArr = reinterpret_cast<const char *>(jbytes);
+    env->ReleaseByteArrayElements(jbyteArray, jbytes, 0);
+    return byteArr;
+}
+
 void tjni_exception_check(TypedJNIEnv *tenv) {
     if (tenv->env->ExceptionCheck()) {
         jthrowable jexception = tenv->env->ExceptionOccurred();

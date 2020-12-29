@@ -289,10 +289,10 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 			for (SignalServiceAttachment attachment : dataMessage.getAttachments().get()) {
 				// do something with attachment
 				SignalServiceAttachmentPointer attachmentPtr = attachment.asPointer();
-				if (attachmentPtr.getFileName().isPresent()) {
-					String filename = attachmentPtr.getFileName().get();
-					handleMessageNatively(this.connection, chat, source, filename, 0, 
-							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG);
+				if (attachmentPtr.getPreview().isPresent()) {
+					byte[] preview = attachmentPtr.getPreview().get();
+					handleAttachmentNatively(this.connection, chat, source, preview, 0, 
+							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG | PURPLE_MESSAGE_IMAGES);
 				} else {
 					handleMessageNatively(this.connection, chat, source, "[Received Attachment.]", 0, 
 							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG);
@@ -336,6 +336,7 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 	final int PURPLE_MESSAGE_NO_LOG = 0x0040;
 	final int PURPLE_MESSAGE_DELAYED = 0x0400;
 	final int PURPLE_MESSAGE_REMOTE_SEND = 0x10000;
+	final int PURPLE_MESSAGE_IMAGES      = 0x1000;
 
 	final static int DEBUG_LEVEL_INFO = 1; // from libpurple/debug.h
 
@@ -344,7 +345,7 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 	public static native void handleMessageNatively(long connection, String chat, String sender, String content,
 			long timestamp, int flags);
 
-	public static native void handleAttachmentNatively(long connection, String chat, String sender, String filename,
+	public static native void handleAttachmentNatively(long connection, String chat, String sender, byte[] preview,
 			long timestamp, int flags);
 
 	public static native void handleErrorNatively(long connection, String error, boolean fatal);

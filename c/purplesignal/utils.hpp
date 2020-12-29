@@ -12,3 +12,5 @@
 void tjni_exception_check(TypedJNIEnv *tenv);
 
 std::string tjni_jstring_to_stdstring(JNIEnv *env, jstring jstr);
+
+const char * tjni_jbyte_to_stdbyte_array(JNIEnv *env, jbyteArray jbyteArray);
