@@ -26,6 +26,8 @@ import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException;
 import org.whispersystems.signalservice.api.messages.SignalServiceContent;
 import org.whispersystems.signalservice.api.messages.SignalServiceReceiptMessage;
 import org.whispersystems.signalservice.api.messages.SignalServiceDataMessage;
+import org.whispersystems.signalservice.api.messages.SignalServiceAttachment;
+import org.whispersystems.signalservice.api.messages.SignalServiceAttachmentPointer;
 import org.whispersystems.signalservice.api.messages.SignalServiceEnvelope;
 import org.whispersystems.signalservice.api.messages.SignalServiceGroup;
 import org.whispersystems.signalservice.api.messages.multidevice.SentTranscriptMessage;
@@ -275,11 +277,29 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 			SignalServiceGroup groupInfo = dataMessage.getGroupContext().get().getGroupV1().get();
 			chat = Base64.encodeBytes(groupInfo.getGroupId());
 		}
+		boolean messageHasContent = false;
 		if (dataMessage.getBody().isPresent()) {
+			messageHasContent = true;
 			String message = dataMessage.getBody().get();
 			long timestamp = dataMessage.getTimestamp();
 			handleMessageNatively(this.connection, chat, source, message, timestamp, PURPLE_MESSAGE_RECV);
-		} else {
+		} 
+		if (dataMessage.getAttachments().isPresent()) {
+			messageHasContent = true;
+			for (SignalServiceAttachment attachment : dataMessage.getAttachments().get()) {
+				// do something with attachment
+				SignalServiceAttachmentPointer attachmentPtr = attachment.asPointer();
+				if (attachmentPtr.getFileName().isPresent()) {
+					String filename = attachmentPtr.getFileName().get();
+					handleMessageNatively(this.connection, chat, source, filename, 0, 
+							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG);
+				} else {
+					handleMessageNatively(this.connection, chat, source, "[Received Attachment.]", 0, 
+							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG);
+				}
+			}
+		}
+		if (!messageHasContent) {
 			handleMessageNatively(this.connection, chat, source, "[Received data message without body.]", 0,
 					PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG);
 		}
@@ -322,6 +342,9 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 	public static native void logNatively(int level, String text);
 
 	public static native void handleMessageNatively(long connection, String chat, String sender, String content,
+			long timestamp, int flags);
+
+	public static native void handleAttachmentNatively(long connection, String chat, String sender, String filename,
 			long timestamp, int flags);
 
 	public static native void handleErrorNatively(long connection, String error, boolean fatal);

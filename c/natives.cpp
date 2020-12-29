@@ -85,6 +85,23 @@ JNIEXPORT void JNICALL Java_de_hehoe_purple_1signal_PurpleSignal_handleMessageNa
     signal_handle_message_async(psm);
 }
 
+JNIEXPORT void JNICALL Java_de_hehoe_purple_1signal_PurpleSignal_handleAttachmentNatively(JNIEnv *env, jclass cls, jlong pc, jstring jchat, jstring jsender, jstring jfileName, jlong timestamp, jint flags) {
+    auto do_in_main_thread = std::make_unique<PurpleSignalConnectionFunction>(
+        [
+            pc = reinterpret_cast<PurpleConnection *>(pc),
+            chat = tjni_jstring_to_stdstring(env, jchat), 
+            sender = tjni_jstring_to_stdstring(env, jsender), 
+            fileName = tjni_jstring_to_stdstring(env, jfileName), 
+            timestamp, 
+            flags = static_cast<PurpleMessageFlags>(flags)
+        ] () {
+            signal_process_message(pc, chat, sender, fileName, timestamp, flags);
+        }
+    );
+    PurpleSignalMessage *psm = new PurpleSignalMessage(do_in_main_thread, pc);
+    signal_handle_message_async(psm);
+}
+
 /*
  * Retrieves a string from the connection's account's key value store.
  * I hope it is okay doing this asynchronously.
