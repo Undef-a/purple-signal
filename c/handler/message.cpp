@@ -36,13 +36,19 @@ signal_display_message(PurpleConnection *pc, const std::string & chat, const std
     purple_conversation_write(conv, sender.c_str(), message, flags, timestamp);
 }
 void
-signal_display_image(PurpleConnection *pc, const std::string & chat, const std::string & sender, const char * attachment, const long timestamp, const PurpleMessageFlags flags)
+signal_display_image(PurpleConnection *pc, const std::string & chat, const std::string & sender, const std::string fileName, const long timestamp, const PurpleMessageFlags flags)
 {
-	/* PurpleImage pimg = purple_image_new_from_bytes(attachment); */
-	/* purple_image_store_add(pimg); */
     PurpleSignalConnection *sa = static_cast<PurpleSignalConnection*>(purple_connection_get_protocol_data(pc));
     PurpleConversation *conv = signal_find_conversation(chat.c_str(), sa->account);
-    purple_conversation_write(conv, sender.c_str(), attachment, flags, timestamp);
+	// Note, this does not actually add the image to the purple_imgstore.
+	PurpleStoredImage psi = purple_imgstore_new_from_file(fileName.c_str());
+	// Actually adds the image to the purple_imgstore and gives us an ID.
+	int imgid = purple_imgstore_add_with_id(purple_imgstore_get_data(psi), 
+											purple_imgstore_get_size(psi),
+											filename.c_str());
+	/* Taken from purple-matrix: https://github.com/matrix-org/purple-matrix/blob/1d23385e6c22f63591fcbfc85c09999953c388ed/matrix-room.c#L673 */
+	gchar * message = g_strdup_printf("IMG ID=\"%d\">", imgid);
+    purple_conversation_write(conv, sender.c_str(), message, flags, timestamp);
 }
 
 void
@@ -56,11 +62,11 @@ signal_process_message(PurpleConnection *pc, const std::string & chat, const std
 }
 
 void
-signal_process_message(PurpleConnection *pc, const std::string & chat, const std::string & sender, const char * message, const long timestamp, const PurpleMessageFlags flags)
+signal_process_image(PurpleConnection *pc, const std::string & chat, const std::string & sender, const char * image, const int length, const long timestamp, const PurpleMessageFlags flags)
 {
     long t = timestamp / 1000; // in Java, signal timestamps are milliseconds
     if (!t) {
         t = time(NULL);
     }
-    signal_display_message(pc, chat, sender, message, t, flags);
+    signal_display_image(pc, chat, sender, image, length, t, flags);
 }

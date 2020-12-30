@@ -5,9 +5,11 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.IOException;
 import java.io.File;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.UUID;
 
 import org.asamk.signal.manager.AttachmentInvalidException;
 import org.asamk.signal.manager.GroupId;
@@ -22,6 +24,7 @@ import org.asamk.signal.storage.SignalAccount;
 import org.asamk.signal.util.SecurityProvider;
 import org.asamk.signal.util.Util;
 import org.whispersystems.libsignal.InvalidKeyException;
+import org.whispersystems.signalservice.api.SignalServiceMessageReceiver;
 import org.whispersystems.signalservice.api.crypto.UntrustedIdentityException;
 import org.whispersystems.signalservice.api.messages.SignalServiceContent;
 import org.whispersystems.signalservice.api.messages.SignalServiceReceiptMessage;
@@ -286,12 +289,21 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 		} 
 		if (dataMessage.getAttachments().isPresent()) {
 			messageHasContent = true;
+			String attachmentOutputDirectoryLocation = System.getProperty("user.home") + ".purple/signal/data/attachments/";
+			File attachmentOutputDirectory = new File(attachmentOutputDirectoryLocation);
+			if (! attachmentOutputDirectory.exists()) {
+				attachmentOutputDirectory.mkdirs();
+			}
 			for (SignalServiceAttachment attachment : dataMessage.getAttachments().get()) {
-				// do something with attachment
 				SignalServiceAttachmentPointer attachmentPtr = attachment.asPointer();
-				if (attachmentPtr.getPreview().isPresent()) {
-					byte[] preview = attachmentPtr.getPreview().get();
-					handleAttachmentNatively(this.connection, chat, source, preview, 0, 
+				if (attachmentPtr.getSize().isPresent()) {
+					String attachmentFileName = attachmentOutputDirectoryLocation + UUID.randomUUID();
+					File attachmentFile = new File(attachmentFileName);
+					int size = attachmentPtr.getSize().get();
+					// implementation: https://github.com/signalapp/libsignal-service-java/blob/1a01c22636ad2c4e24e911ed7c4eb95f14cc58d6/java/src/main/java/org/whispersystems/signalservice/api/SignalServiceMessageReceiver.java
+					InputStream attachmentStream = SignalServiceMessageReceiver.retrieveAttachment(attachmentPtr, attachmentFile, size);
+
+					handleAttachmentNatively(this.connection, chat, source, attachmentFileName, 0, 
 							PURPLE_MESSAGE_SYSTEM | PURPLE_MESSAGE_NO_LOG | PURPLE_MESSAGE_IMAGES);
 				} else {
 					handleMessageNatively(this.connection, chat, source, "[Received Attachment.]", 0, 
@@ -345,7 +357,7 @@ public class PurpleSignal implements ReceiveMessageHandler, Runnable {
 	public static native void handleMessageNatively(long connection, String chat, String sender, String content,
 			long timestamp, int flags);
 
-	public static native void handleAttachmentNatively(long connection, String chat, String sender, byte[] preview,
+	public static native void handleAttachmentNatively(long connection, String chat, String sender, String preview,
 			long timestamp, int flags);
 
 	public static native void handleErrorNatively(long connection, String error, boolean fatal);
